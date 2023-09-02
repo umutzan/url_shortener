@@ -6,6 +6,7 @@ const loginMW = async (req, res, next) => {
     try {
         const user = await User.findOne({ where: { mail: mail } })
         if (user.password == password) {
+            req.body.id = user.id
             next();
         } else {
             res.status(500).send("şifre yanlış");
@@ -18,4 +19,4 @@ const loginMW = async (req, res, next) => {
 
 }
 
-module.exports=loginMW;
+module.exports = loginMW;

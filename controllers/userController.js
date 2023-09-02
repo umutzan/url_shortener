@@ -13,7 +13,7 @@ class theUserController {
         User.create(req.body)
             .then((user) => {
                 res.status(200).json({
-                    body: req.body,
+                    success: true,
                     token: createToken(req.body.id),
                 });
             })
@@ -25,7 +25,7 @@ class theUserController {
 
     async login(req, res) {
         res.status(200).json({
-            body: req.body,
+            success: true,
             token: createToken(req.body.id),
         });
     }

@@ -1,12 +1,16 @@
 const express = require("express");
-const linkIdMW = require("../middlewares/linkIdMidelware")
-const linkAdderC = require("../controllers/linkAdderController")
+
+const authMiddlewareForStatic = require("../middlewares/authMiddlewareForStatic")
+const loginMiddlewareForStatic = require("../middlewares/loginMiddlewareForStatic")
+const pageController = require("../controllers/pageController")
 
 const pagesRouter = express.Router();
 
+pagesRouter.route("/admin").get(pageController.index);
 
-pagesRouter.route("/login").get();
-pagesRouter.route("/register").get();
-pagesRouter.route("/profile").get();
+
+pagesRouter.route("/login").get(loginMiddlewareForStatic, pageController.login);
+pagesRouter.route("/register").get(loginMiddlewareForStatic, pageController.register);
+pagesRouter.route("/profile").get(authMiddlewareForStatic, pageController.profile);
 
 module.exports = pagesRouter;
