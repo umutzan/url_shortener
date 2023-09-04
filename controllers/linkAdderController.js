@@ -3,15 +3,12 @@ const links = require("../models/links.js");
 class linkAdderCntroller {
     async linkAdder(req, res) {
 
-        links.create(req.body)
+        links.create(req.body).then((data) => {
 
-            .then((data) => {
-
-                console.log("kayıt başarılı");
-                res.status(200).json(data);
+            res.status(200).json(data);
 
 
-            })
+        })
             .catch((err) => {
                 console.log(err);
                 res.status(500).json(err);

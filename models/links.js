@@ -5,14 +5,11 @@ class Links extends Model { }
 
 Links.init(
   {
-    usersID: {
-      type: String,
-    },
-    linkID: {
+    link: {
       type: String,
       unique: true,
     },
-    link: {
+    url: {
       type: String,
     },
   },

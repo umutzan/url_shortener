@@ -1,4 +1,3 @@
-const User = require("../models/user.js");
 const jwt = require("jsonwebtoken");
 
 
@@ -20,24 +19,7 @@ class pageController {
         res.render("register")
 
     }
-    async profile(req, res) {
 
-        const token = req.cookies.token;
-        const id = jwt.verify(token, "theKey").id
-
-        let userInfo = await User.findOne({ where: { id: id } })
-
-        const body = JSON.parse(JSON.stringify(userInfo));
-
-
-
-
-        res.render("profile", {
-            body: body,
-
-        })
-
-    }
 
 
 

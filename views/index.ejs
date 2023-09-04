@@ -1,15 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Ana Sayfa</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Ekle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script src="script.js"></script>
+
 </head>
+
 <body>
-    <div class="container mt-5">
-        <h1>Hoş Geldiniz!</h1>
-        <p>Lütfen giriş yapmak veya kayıt olmak için aşağıdaki düğmelere tıklayın.</p>
-        <a href="/admin/login" class="btn btn-primary mr-2">Giriş Yap</a>
-        <a href="/admin/register" class="btn btn-success">Kayıt Ol</a>
+    <div class="container">
+        <h1>Link Shortener</h1>
+        <form id="linkForm">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" required>
+
+            <label for="link">Customize Link:</label>
+            <input type="text" id="link" name="link">
+
+            <button type="submit">Shorten It!!</button>
+
+        </form>
+
     </div>
+    <div class="container" id="responseArea"></div>
+
 </body>
+
 </html>
