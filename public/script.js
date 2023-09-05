@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((data) => {
                 console.log("data:", data);
 
-                responseArea.innerHTML='<h3>https://linyit.net/'+data.link+'</h3>'
+                responseArea.innerHTML='<h3>https://shortlink.linyit.net/'+data.link+'</h3>'
                 urlInput.value = "";
                 linkInput.value = "";
             })
