@@ -3,47 +3,47 @@ const links = require("../models/links");
 
 const linkMW = async (req, res, next) => {
 
-    let isUnique = false;
 
-    function randomLink() {
-        const min = 10000; // En küçük 5 basamaklı sayı
-        const max = 99999; // En büyük 5 basamaklı sayı
+    function randomLinler() {  //this function is creat a nuber between 10000 to 99999
+        const min = 10000;
+        const max = 99999;
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     try {
         let { link } = req.body;
 
+        let isUnique = false;
+
+
         if (link == null) {
-            while (isUnique == false) {
-                let newLink = randomLink().toString()
-                await links.findOne({ where: { link: newLink } }).then((data) => {
+            let newLink = randomLinler().toString(); //get a nuber form the function
 
-                    if (data == null) {
-                        req.body.link = newLink;
-                        isUnique = true;
-                    }
-                })
+            while (isUnique == true) {
+                let linkCheck = await links.findOne({ where: { link: newLink } });
 
+                if (linkCheck == null) {
+                    req.body.link = newLink;
+                    next();
+                }
             }
 
-            next()
 
 
         } else {
-            const IDCheck = await links.findOne({ where: { link: link } });
+            let linkCheck = await links.findOne({ where: { link: link } });
 
-            if (IDCheck == undefined) {
-                next()
+            if (linkCheck == null) { //if specefic link is allrady using, the code will throw an error
+                next();
             } else {
                 res.json({
                     error: "Same link is alrady using"
                 });
             }
-
         }
+
     } catch (error) {
-        console.log(error)
+        res.error(error);
     }
 
 

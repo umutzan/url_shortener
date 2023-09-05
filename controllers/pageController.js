@@ -1,6 +1,3 @@
-const jwt = require("jsonwebtoken");
-
-
 class pageController {
     async index(req, res) {
 
@@ -8,17 +5,6 @@ class pageController {
 
     }
 
-    async login(req, res) {
-
-        res.render("login")
-
-    }
-
-    async register(req, res) {
-
-        res.render("register")
-
-    }
 
 
 

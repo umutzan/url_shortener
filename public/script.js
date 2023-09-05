@@ -16,8 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
-        // Bu kısmı kendi API'nizle değiştirmeniz gerekecektir.
-        // Örneğin, XMLHttpRequest veya fetch kullanarak sunucuya veri gönderebilirsiniz.
+
         fetch("/api/newlink", {
             method: "POST",
             body: JSON.stringify({ url, link }),
@@ -29,13 +28,13 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((data) => {
                 console.log("data:", data);
 
-                responseArea.innerHTML='<h3>The Shorten Link:</h3><h3>https://linyit.net/'+data.link+'</h3>'
+                responseArea.innerHTML='<h3>https://linyit.net/'+data.link+'</h3>'
                 urlInput.value = "";
                 linkInput.value = "";
             })
             .catch((error) => {
                 console.error("Error:", error);
-                // Hata durumunda kullanıcıya bir hata mesajı gösterilebilir.
+
                 alert("Error:", error);
             });
     });

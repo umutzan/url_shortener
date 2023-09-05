@@ -14,8 +14,8 @@ database.sync().then((result) => {
 
     app.set("view engine", "ejs");
     app.use(express.json());
-    app.use("/api", apiRouter);
-    app.use("/", pagesRouter);
+    app.use("/api", apiRouter); //api for link creating
+    app.use("/", pagesRouter);  //main page
 
     app.listen(80, () => {
         console.log("listening port 80");
