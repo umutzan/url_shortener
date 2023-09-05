@@ -16,16 +16,22 @@ const linkMW = async (req, res, next) => {
         let isUnique = false;
 
 
-        if (link == null) {
-            let newLink = randomLinler().toString(); //get a nuber form the function
+        if (link == undefined || link == null || link == "") {
 
-            while (isUnique == true) {
-                let linkCheck = await links.findOne({ where: { link: newLink } });
+            while (isUnique == false) {
+                console.log("aaaaaa")
+                let newLink = randomLinler().toString(); //get a nuber form the function
 
-                if (linkCheck == null) {
-                    req.body.link = newLink;
-                    next();
-                }
+                await links.findOne({ where: { link: newLink } }).then((data) => {
+                    if (data == null) {
+                        req.body.link = newLink;
+                        isUnique = true;
+                    }
+                });
+
+                next();
+
+
             }
 
 
