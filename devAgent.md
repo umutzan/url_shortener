@@ -20,7 +20,6 @@ Tek kullanıcılı, admin panelli. `.env.local` dosyasındaki kullanıcı adı/b
 | Tailwind CSS v4 | Stil (tam karanlık mod) |
 | better-sqlite3 | Veritabanı (Node.js runtime) |
 | jose | JWT imzalama + doğrulama (hem middleware hem API route'larda) |
-| bcryptjs | Parola doğrulama (bcrypt.compareSync) |
 | nanoid (customAlphabet) | 7 karakterli Base62 kısa kod üretimi |
 | qrcode | QR kod PNG üretimi |
 
@@ -34,7 +33,8 @@ Tek kullanıcılı, admin panelli. `.env.local` dosyasındaki kullanıcı adı/b
 ├── next.config.ts                  # Güvenlik HTTP başlıkları
 ├── lib/
 │   ├── db.ts                       # SQLite bağlantısı, CRUD helpers (codeExists dahil)
-│   ├── auth.ts                     # JWT sign/verify, getSession, bcrypt validateCredentials
+│   ├── auth.ts                     # JWT sign/verify, getSession, validateCredentials (düz metin)
+│   ├── siteUrl.ts                  # getSiteUrl() — SITE_URL env varsa onu, yoksa localhost:3000
 │   └── reserved.ts                 # Kısa kod olarak yasak path listesi
 ├── app/
 │   ├── page.tsx                    # / → session varsa /dashboard, yoksa /login
@@ -67,17 +67,10 @@ Tek kullanıcılı, admin panelli. `.env.local` dosyasındaki kullanıcı adı/b
 
 ```
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD_HASH=<bcrypt hash>   # Düz metin şifre YOK, sadece hash
+ADMIN_PASSWORD=düzmetinşifre       # Şu an düz metin — ileride hash'e taşınacak
 JWT_SECRET=<min 32 char rastgele string>
+SITE_URL=https://kendi-domainin.com  # Opsiyonel; yoksa http://localhost:3000 kullanılır
 ```
-
-### Hash Nasıl Üretilir?
-
-```bash
-node -e "const b=require('bcryptjs'); console.log(b.hashSync('şifren', 12));"
-```
-
-Çıktıyı kopyalayıp `.env.local` içindeki `ADMIN_PASSWORD_HASH=` satırına yapıştır.
 
 ---
 
@@ -87,7 +80,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('şifren', 12));"
 |---|---|---|
 | 1 | **Protokol whitelist** | Yalnızca `http:` ve `https:` kabul edilir; `javascript:`, `data:` vb. → 400 |
 | 2 | **Yüksek entropi kod** | `nanoid` Base62, 7 karakter → ~3.5 trilyon kombinasyon |
-| 3 | **Bcrypt parola** | `.env.local`'da düz metin yok; `bcrypt.compareSync` ile doğrulama |
+| 3 | ~~**Bcrypt parola**~~ | Kaldırıldı — şu an `.env.local`'da `ADMIN_PASSWORD` düz metin; ileride hash'e taşınacak |
 | 4 | **Cookie SameSite=Strict** | CSRF koruması maksimuma çıkarıldı |
 | 5 | **Rate limiting** | IP bazlı, 1 dakikada 5 başarısız deneme → 429 |
 | 6 | **Security headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
@@ -129,7 +122,7 @@ Kullanıcı → bizimsitemiz.com/aBc1234
 ```
 POST /api/auth/login  { username, password }
   → IP rate limit kontrolü (5 deneme / 1 dakika)
-  → bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)
+  → password === ADMIN_PASSWORD (düz metin karşılaştırma — ileride hash'e taşınacak)
   → eşleşirse: JWT (8 saat) → httpOnly + SameSite=Strict cookie
   → eşleşmezse: hata kaydı → 401
 
@@ -183,11 +176,12 @@ Renk paleti:
 ## Önemli Teknik Notlar
 
 1. `better-sqlite3` yalnızca Node.js runtime'da çalışır. Middleware'de kullanılamaz; bu yüzden yönlendirme mantığı `/api/r/[code]` route'unda tutulur ve middleware oraya rewrite yapar.
-2. `nanoid` artık aktif olarak kullanılıyor (`customAlphabet`, Base62, 7 karakter).
-3. `bcryptjs` artık aktif: `lib/auth.ts` → `validateCredentials` içinde `bcrypt.compareSync`.
+2. `nanoid` aktif: `customAlphabet`, Base62, 7 karakter.
+3. `bcryptjs` kaldırıldı — `validateCredentials` artık `password === process.env.ADMIN_PASSWORD` ile düz metin karşılaştırma yapıyor.
 4. DB WAL modu açık, foreign key'ler aktif.
-5. QR PNG response'unda `buffer as unknown as BodyInit` cast'i kullanılıyor — `qrcode` paketi `Buffer` döner, Next.js `Response` ise `BodyInit` bekler; bu TS uyumsuzluğunu gidermek için yapılmıştır.
+5. QR PNG response'unda `buffer as unknown as BodyInit` cast'i kullanılıyor — `qrcode` paketi `Buffer` döner, Next.js `Response` ise `BodyInit` bekler.
 6. Rate limiting memory-tabanlıdır — process restart'ta sıfırlanır. Multi-instance deploy için Redis gibi harici store gerekir.
+7. `lib/siteUrl.ts` → `getSiteUrl()`: `SITE_URL` env varsa onu döner (sondaki `/` temizlenir), yoksa `http://localhost:3000`. Dashboard ve QR route bu fonksiyonu kullanır.
 
 ---
 
@@ -199,4 +193,5 @@ Renk paleti:
 - [ ] Çoklu kullanıcı desteği (şu an tek admin)
 - [ ] Link son kullanma tarihi (expiry)
 - [x] `data/` klasörünü `.gitignore`'a ekle (DB dosyası commit'lenmemeli) — **Tamamlandı**
+- [ ] **Parola güvenliği:** `ADMIN_PASSWORD` şu an `.env.local`'da düz metin. Bcrypt veya Argon2 hash'e taşınmalı — `validateCredentials` `lib/auth.ts:42`'de, `.env.local`'da `ADMIN_PASSWORD_HASH` değişkeni kullanılmalı.
 - [ ] Rate limiting için Redis/harici store (şu an memory-tabanlı, restart'ta sıfırlanır)

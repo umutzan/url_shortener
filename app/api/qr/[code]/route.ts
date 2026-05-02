@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { findByCode } from "@/lib/db";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function GET(
     return NextResponse.json({ error: "Bulunamadı" }, { status: 404 });
   }
 
-  const shortUrl = `${req.nextUrl.origin}/${code}`;
+  const shortUrl = `${getSiteUrl()}/${code}`;
 
   const buffer = await QRCode.toBuffer(shortUrl, {
     width: 400,

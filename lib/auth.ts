@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify } from "jose";
-import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "auth_token";
@@ -40,11 +39,9 @@ export async function getSession(): Promise<JwtPayload | null> {
 }
 
 export function validateCredentials(username: string, password: string): boolean {
-  const hash = process.env.ADMIN_PASSWORD_HASH;
-  if (!hash) return false;
   return (
     username === process.env.ADMIN_USERNAME &&
-    bcrypt.compareSync(password, hash)
+    password === process.env.ADMIN_PASSWORD
   );
 }
 
