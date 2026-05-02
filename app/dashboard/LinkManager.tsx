@@ -10,12 +10,18 @@ interface Link {
   created_at: string;
 }
 
+interface Settings {
+  site_url: string;
+  default_redirect: string;
+}
+
 interface Props {
   username: string;
   baseUrl: string;
+  initialSettings: Settings;
 }
 
-export default function LinkManager({ username, baseUrl }: Props) {
+export default function LinkManager({ username, baseUrl, initialSettings }: Props) {
   const [links, setLinks] = useState<Link[]>([]);
   const [url, setUrl] = useState("");
   const [customCode, setCustomCode] = useState("");
@@ -25,6 +31,12 @@ export default function LinkManager({ username, baseUrl }: Props) {
   const [error, setError] = useState("");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  const [siteUrl, setSiteUrl] = useState(initialSettings.site_url);
+  const [defaultRedirect, setDefaultRedirect] = useState(initialSettings.default_redirect);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
 
   const fetchLinks = useCallback(async () => {
     const res = await fetch("/api/links");
@@ -74,6 +86,27 @@ export default function LinkManager({ username, baseUrl }: Props) {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setSettingsSaving(true);
+    setSettingsError("");
+    setSettingsSaved(false);
+
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ site_url: siteUrl.trim(), default_redirect: defaultRedirect.trim() }),
+    });
+
+    if (res.ok) {
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 3000);
+    } else {
+      setSettingsError("Ayarlar kaydedilemedi");
+    }
+    setSettingsSaving(false);
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
@@ -107,6 +140,52 @@ export default function LinkManager({ username, baseUrl }: Props) {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        {/* Settings panel */}
+        <section className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
+          <h2 className="text-sm font-semibold text-slate-300 mb-4">Site Ayarları</h2>
+          <form onSubmit={handleSaveSettings} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-500">Site URL</label>
+                <input
+                  type="url"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                  placeholder="https://kendi-domainin.com"
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+                />
+                <p className="text-xs text-slate-600">Boş bırakılırsa env veya localhost:3000 kullanılır</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-500">Ana Sayfa Yönlendirme <span className="text-slate-600">(/ adresi)</span></label>
+                <input
+                  type="url"
+                  value={defaultRedirect}
+                  onChange={(e) => setDefaultRedirect(e.target.value)}
+                  placeholder="https://hedef-site.com"
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+                />
+                <p className="text-xs text-slate-600">Boş bırakılırsa / → giriş sayfasına yönlendirir</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={settingsSaving}
+                className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900 disabled:text-blue-500 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors"
+              >
+                {settingsSaving ? "Kaydediliyor…" : "Kaydet"}
+              </button>
+              {settingsSaved && (
+                <span className="text-xs text-emerald-400">Ayarlar kaydedildi</span>
+              )}
+              {settingsError && (
+                <span className="text-xs text-red-400">{settingsError}</span>
+              )}
+            </div>
+          </form>
+        </section>
+
         {/* Create form */}
         <section className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-slate-300 mb-4">Yeni Link Oluştur</h2>

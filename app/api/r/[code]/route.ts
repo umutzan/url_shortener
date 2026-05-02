@@ -5,16 +5,27 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
   const link = findByCode(code);
 
   if (!link) {
-    return NextResponse.redirect(new URL("/", _req.url), { status: 302 });
+    return NextResponse.redirect(new URL("/", req.url), { status: 302 });
   }
 
-  incrementHits(code);
-  return NextResponse.redirect(link.original, { status: 302 });
+  const cookieName = `visited_${code}`;
+  const response = NextResponse.redirect(link.original, { status: 302 });
+
+  if (!req.cookies.get(cookieName)) {
+    incrementHits(code);
+    response.cookies.set(cookieName, "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 86400,
+    });
+  }
+
+  return response;
 }
