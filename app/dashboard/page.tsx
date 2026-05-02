@@ -3,6 +3,11 @@ import { getSession } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getSetting } from "@/lib/db";
 import LinkManager from "./LinkManager";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Link Kısalt",
+};
 
 export default async function DashboardPage() {
   const session = await getSession();
