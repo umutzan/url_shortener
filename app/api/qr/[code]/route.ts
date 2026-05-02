@@ -16,7 +16,7 @@ export async function GET(
     return NextResponse.json({ error: "Bulunamadı" }, { status: 404 });
   }
 
-  const shortUrl = `${getSiteUrl()}/${code}`;
+  const shortUrl = `${await getSiteUrl()}/${code}`;
 
   const buffer = await QRCode.toBuffer(shortUrl, {
     width: 400,
