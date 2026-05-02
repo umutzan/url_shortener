@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Link Shortener
 
-## Getting Started
+A self-hosted link shortener with QR code generation, built with Next.js 16 (App Router) and SQLite.
 
-First, run the development server:
+> Vibe-coded for personal use after my university club kept running into limitations with third-party link shorteners and QR code tools during events — needed something simple, self-hosted, and fully in control.
+
+## Features
+
+- Shorten any URL with an auto-generated or custom code
+- QR code generation (PNG, downloadable)
+- Hit counter with F5/spam protection via cookies
+- Single-admin authentication (JWT cookie, 8h session)
+- Configurable site URL and homepage redirect from the dashboard
+- Fully dark UI
+
+## Stack
+
+| | |
+|---|---|
+| Next.js 16 (App Router) | Framework |
+| TypeScript | Language |
+| Tailwind CSS v4 | Styling |
+| better-sqlite3 | Database |
+| jose | JWT auth |
+| nanoid | Short code generation |
+| qrcode | QR PNG output |
+
+## Setup
+
+**1. Install dependencies**
+
+```bash
+npm install
+```
+
+**2. Create `.env.local`**
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=yourpassword
+JWT_SECRET=a-random-string-at-least-32-characters-long
+SITE_URL=https://your-domain.com   # optional, also configurable from the dashboard
+```
+
+**3. Run**
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The SQLite database is created automatically at `data/links.db` on first run.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Go to `/login` and sign in
+- The dashboard lets you create/delete links, generate QR codes, and configure site settings
+- Short links resolve at `yourdomain.com/<code>`
+- The homepage (`/`) can be pointed to any URL from the dashboard settings panel
 
-## Learn More
+## Notes
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Single-user only — one admin account via `.env.local`
+- Rate limiting is memory-based; resets on server restart
+- Not designed for high-traffic or multi-user scenarios

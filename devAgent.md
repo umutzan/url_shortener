@@ -1,197 +1,219 @@
-# devAgent.md — Proje Durum Notu
+# devAgent.md — Project Status Notes
 
-Bu dosya bir sonraki agent'ın projeyi sıfırdan anlaması için yazılmıştır.
+This file is written so the next agent can understand the project from scratch.
 
 ---
 
-## Proje Nedir?
+## What Is This?
 
-Next.js 16 (App Router) + SQLite tabanlı **link kısaltma servisi**.
-Tek kullanıcılı, admin panelli. `.env.local` dosyasındaki kullanıcı adı/bcrypt hash ile giriş yapılır, JWT cookie ile oturum korunur.
+A **link shortening service** built with Next.js 16 (App Router) + SQLite.
+Single-user, admin-panel driven. Login is handled via username/password in `.env.local`, session is protected with a JWT cookie.
 
 ---
 
 ## Stack
 
-| Teknoloji | Kullanım |
+| Technology | Usage |
 |---|---|
 | Next.js 16 (App Router) | Framework |
-| TypeScript | Dil |
-| Tailwind CSS v4 | Stil (tam karanlık mod) |
-| better-sqlite3 | Veritabanı (Node.js runtime) |
-| jose | JWT imzalama + doğrulama (hem middleware hem API route'larda) |
-| nanoid (customAlphabet) | 7 karakterli Base62 kısa kod üretimi |
-| qrcode | QR kod PNG üretimi |
+| TypeScript | Language |
+| Tailwind CSS v4 | Styling (always dark mode) |
+| better-sqlite3 | Database (Node.js runtime only) |
+| jose | JWT signing + verification (middleware and API routes) |
+| nanoid (customAlphabet) | 7-char Base62 short code generation |
+| qrcode | QR code PNG generation |
 
 ---
 
-## Dosya Haritası
+## File Map
 
 ```
 /
-├── middleware.ts                   # Edge: JWT koruması + kısa kod rewrite
-├── next.config.ts                  # Güvenlik HTTP başlıkları
+├── middleware.ts                   # Edge: JWT protection + short code rewrite
+├── next.config.ts                  # Security HTTP headers
 ├── lib/
-│   ├── db.ts                       # SQLite bağlantısı, CRUD helpers (codeExists dahil)
-│   ├── auth.ts                     # JWT sign/verify, getSession, validateCredentials (düz metin)
-│   ├── siteUrl.ts                  # getSiteUrl() — SITE_URL env varsa onu, yoksa localhost:3000
-│   └── reserved.ts                 # Kısa kod olarak yasak path listesi
+│   ├── db.ts                       # SQLite connection, CRUD helpers, settings table
+│   ├── auth.ts                     # JWT sign/verify, getSession, validateCredentials (plain text)
+│   ├── siteUrl.ts                  # getSiteUrl() — DB > SITE_URL env > localhost:3000
+│   └── reserved.ts                 # Reserved paths that cannot be used as short codes
 ├── app/
-│   ├── page.tsx                    # / → session varsa /dashboard, yoksa /login
+│   ├── page.tsx                    # / → default_redirect if set, else session → /dashboard or /login
 │   ├── layout.tsx                  # Root layout
-│   ├── globals.css                 # Tailwind import + dark renk değişkenleri
+│   ├── globals.css                 # Tailwind import + dark color variables
 │   ├── login/
-│   │   └── page.tsx                # Giriş formu (client component)
+│   │   └── page.tsx                # Login form (client component)
 │   ├── dashboard/
-│   │   ├── page.tsx                # Server Component: session kontrol + baseUrl hesapla
-│   │   └── LinkManager.tsx         # Client Component: tüm dashboard UI
+│   │   ├── page.tsx                # Server Component: session check + pass settings/baseUrl
+│   │   └── LinkManager.tsx         # Client Component: full dashboard UI
 │   └── api/
 │       ├── auth/
-│       │   ├── login/route.ts      # POST: rate limit → bcrypt doğrula → JWT cookie (strict)
-│       │   └── logout/route.ts     # POST /api/auth/logout → cookie sıfırlar
+│       │   ├── login/route.ts      # POST: rate limit → plain text compare → JWT cookie (strict)
+│       │   └── logout/route.ts     # POST /api/auth/logout → clears cookie
 │       ├── links/
-│       │   ├── route.ts            # GET (liste), POST (oluştur, protokol whitelist + nanoid)
+│       │   ├── route.ts            # GET (list), POST (create, protocol whitelist + nanoid)
 │       │   └── [code]/route.ts     # DELETE /api/links/:code
 │       ├── qr/
-│       │   └── [code]/route.ts     # GET /api/qr/:code → PNG QR kodu döner
-│       └── r/
-│           └── [code]/route.ts     # Middleware rewrite → DB → redirect
+│       │   └── [code]/route.ts     # GET /api/qr/:code → returns PNG QR code
+│       ├── r/
+│       │   └── [code]/route.ts     # Middleware rewrite → DB lookup → redirect (with hit cookie)
+│       └── settings/
+│           └── route.ts            # GET/POST site settings (session protected)
 ├── data/
-│   └── links.db                    # SQLite DB (auto-created, gitignore'da olmalı)
-└── .env.local                      # Kimlik bilgileri (asla commit'leme)
+│   └── links.db                    # SQLite DB (auto-created, in .gitignore)
+└── .env.local                      # Credentials (never commit)
 ```
 
 ---
 
-## .env.local Yapısı
+## .env.local Structure
 
 ```
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=düzmetinşifre       # Şu an düz metin — ileride hash'e taşınacak
-JWT_SECRET=<min 32 char rastgele string>
-SITE_URL=https://kendi-domainin.com  # Opsiyonel; yoksa http://localhost:3000 kullanılır
+ADMIN_PASSWORD=plaintextpassword    # Plain text for now — should be hashed later
+JWT_SECRET=<random string, min 32 chars>
+SITE_URL=https://your-domain.com    # Optional; also configurable from the dashboard
 ```
 
 ---
 
-## Güvenlik Önlemleri (Uygulandı)
+## Security Measures (Applied)
 
-| # | Önlem | Detay |
+| # | Measure | Detail |
 |---|---|---|
-| 1 | **Protokol whitelist** | Yalnızca `http:` ve `https:` kabul edilir; `javascript:`, `data:` vb. → 400 |
-| 2 | **Yüksek entropi kod** | `nanoid` Base62, 7 karakter → ~3.5 trilyon kombinasyon |
-| 3 | ~~**Bcrypt parola**~~ | Kaldırıldı — şu an `.env.local`'da `ADMIN_PASSWORD` düz metin; ileride hash'e taşınacak |
-| 4 | **Cookie SameSite=Strict** | CSRF koruması maksimuma çıkarıldı |
-| 5 | **Rate limiting** | IP bazlı, 1 dakikada 5 başarısız deneme → 429 |
+| 1 | **Protocol whitelist** | Only `http:` and `https:` accepted; `javascript:`, `data:` etc. → 400 |
+| 2 | **High entropy code** | `nanoid` Base62, 7 chars → ~3.5 trillion combinations |
+| 3 | ~~**Bcrypt password**~~ | Removed — `ADMIN_PASSWORD` is plain text in `.env.local` for now; should be hashed later |
+| 4 | **Cookie SameSite=Strict** | Maximum CSRF protection |
+| 5 | **Rate limiting** | IP-based, 5 failed attempts per minute → 429 |
 | 6 | **Security headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
+| 7 | **F5 spam protection** | `visited_<code>` cookie (httpOnly, sameSite: lax, 24h) prevents hit count inflation on refresh |
 
 ---
 
-## Veritabanı Şeması
+## Database Schema
 
 ```sql
 CREATE TABLE links (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  code        TEXT    NOT NULL UNIQUE,   -- 7 char Base62 veya custom kod
-  original    TEXT    NOT NULL,          -- hedef URL (http/https zorunlu)
+  code        TEXT    NOT NULL UNIQUE,   -- 7 char Base62 or custom code
+  original    TEXT    NOT NULL,          -- target URL (http/https required)
   hits        INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX idx_links_code ON links(code);
+
+CREATE TABLE settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
+);
 ```
 
-DB dosyası: `data/links.db` — sunucu ilk başladığında otomatik oluşur.
+DB file: `data/links.db` — created automatically on first server start.
+
+Known settings keys: `site_url`, `default_redirect`.
 
 ---
 
-## Yönlendirme Mantığı
+## Redirect Logic
 
 ```
-Kullanıcı → bizimsitemiz.com/aBc1234
-  → middleware.ts yakalar
-  → /api/r/aBc1234 'ye rewrite eder
-  → DB'de code = 'aBc1234' aranır
-  → bulunursa: hits++ → 302 redirect → original URL
-  → bulunmazsa: 302 redirect → /
+User → oursite.com/aBc1234
+  → middleware.ts intercepts
+  → rewrites to /api/r/aBc1234
+  → DB lookup for code = 'aBc1234'
+  → if found: hits++ (unless visited_aBc1234 cookie present) → 302 redirect → original URL
+  → if not found: 302 redirect → /
 ```
 
 ---
 
-## Auth Akışı
+## Auth Flow
 
 ```
 POST /api/auth/login  { username, password }
-  → IP rate limit kontrolü (5 deneme / 1 dakika)
-  → password === ADMIN_PASSWORD (düz metin karşılaştırma — ileride hash'e taşınacak)
-  → eşleşirse: JWT (8 saat) → httpOnly + SameSite=Strict cookie
-  → eşleşmezse: hata kaydı → 401
+  → IP rate limit check (5 attempts / 1 minute)
+  → password === ADMIN_PASSWORD (plain text — should be hashed later)
+  → match: JWT (8h) → httpOnly + SameSite=Strict cookie
+  → no match: record failure → 401
 
 middleware.ts (Edge Runtime)
-  → /dashboard/* için cookie okur → jose ile doğrular
-  → token yoksa/geçersizse → /login'e redirect
-  → /login'e giderken token geçerliyse → /dashboard'a redirect
+  → reads cookie for /dashboard/* → verifies with jose
+  → missing/invalid token → redirect to /login
+  → valid token on /login → redirect to /dashboard
 
-GET /api/links (ve diğer korumalı API'ler)
-  → lib/auth.ts:getSession() ile Node.js tarafında da doğrulama yapılır
+GET /api/links (and other protected APIs)
+  → also verified server-side via lib/auth.ts:getSession()
 ```
 
-**Önemli:** Hem middleware hem API route'lar artık yalnızca `jose` kullanır. `signToken` ve `verifyToken` async'tir — çağıran her yerde `await` gerekir.
+**Important:** Both middleware and API routes use only `jose`. `signToken` and `verifyToken` are async — always `await` them.
 
 ---
 
-## Kısa Kod Kuralları
+## Short Code Rules
 
-- **Varsayılan:** `nanoid` `customAlphabet("[a-zA-Z0-9]", 7)` → 7 char Base62 (~3.5T kombinasyon)
-- **Özel kod:** Kullanıcı dashboard'da toggle açarak kendi kodunu girer
-- **Geçerli karakterler:** `[a-zA-Z0-9_-]`
-- **Rezerve path'ler** (`lib/reserved.ts`): `dashboard`, `login`, `api`, `_next`, `admin`, `auth`, `public`, `static`, `favicon`, `favicon.ico`, `robots.txt`, `sitemap.xml`
-- Otomatik kod üretiminde çakışma varsa 10 kez yeniden denenir; özel kodda çakışma varsa 409 döner
-
----
-
-## Dashboard Özellikleri
-
-- Link oluşturma formu (URL + opsiyonel özel kod toggle'ı)
-- Tüm linklerin tablosu: kısa URL, hedef, tıklanma sayısı, tarih
-- Her satırda: panoya kopyala (✓ geri bildirimiyle), QR modal, sil
-- QR modal: 400×400 PNG görüntüsü + PNG indirme butonu
-- Çıkış yapma butonu
+- **Default:** `nanoid` `customAlphabet("[a-zA-Z0-9]", 7)` → 7 char Base62 (~3.5T combinations)
+- **Custom code:** User enables a toggle in the dashboard and types their own code
+- **Valid characters:** `[a-zA-Z0-9_-]`
+- **Reserved paths** (`lib/reserved.ts`): `dashboard`, `login`, `api`, `_next`, `admin`, `auth`, `public`, `static`, `favicon`, `favicon.ico`, `robots.txt`, `sitemap.xml`
+- Auto-generated codes retry up to 10 times on collision; custom codes return 409 on collision
 
 ---
 
-## Tema
+## Dashboard Features
 
-Tam karanlık mod — sistem tercihinden bağımsız, her zaman dark.
-
-Renk paleti:
-- Arka plan: `#0f1117`
-- Kart/panel: `#1a1d27`
-- Kenarlık: `#2a2d3a`
-- Hover satır: `#1f2233`
-- Vurgu: `blue-600` / `blue-500`
-- Metin: `white` → `slate-300` → `slate-500` → `slate-600` (hiyerarşi)
+- Settings panel (above link creator): configure Site URL and homepage redirect — saved to DB
+- Link creation form (URL + optional custom code toggle)
+- Full links table: short URL, target, hit count, date
+- Per-row actions: copy to clipboard (with ✓ feedback), QR modal, delete
+- QR modal: 400×400 PNG image + download button
+- Logout button
 
 ---
 
-## Önemli Teknik Notlar
+## Site URL Resolution
 
-1. `better-sqlite3` yalnızca Node.js runtime'da çalışır. Middleware'de kullanılamaz; bu yüzden yönlendirme mantığı `/api/r/[code]` route'unda tutulur ve middleware oraya rewrite yapar.
-2. `nanoid` aktif: `customAlphabet`, Base62, 7 karakter.
-3. `bcryptjs` kaldırıldı — `validateCredentials` artık `password === process.env.ADMIN_PASSWORD` ile düz metin karşılaştırma yapıyor.
-4. DB WAL modu açık, foreign key'ler aktif.
-5. QR PNG response'unda `buffer as unknown as BodyInit` cast'i kullanılıyor — `qrcode` paketi `Buffer` döner, Next.js `Response` ise `BodyInit` bekler.
-6. Rate limiting memory-tabanlıdır — process restart'ta sıfırlanır. Multi-instance deploy için Redis gibi harici store gerekir.
-7. `lib/siteUrl.ts` → `getSiteUrl()`: `SITE_URL` env varsa onu döner (sondaki `/` temizlenir), yoksa `http://localhost:3000`. Dashboard ve QR route bu fonksiyonu kullanır.
+`getSiteUrl()` in `lib/siteUrl.ts` is async and follows this priority:
+1. `site_url` setting in DB (set via dashboard)
+2. `SITE_URL` environment variable
+3. `http://localhost:3000` (fallback)
+
+Used in: `app/dashboard/page.tsx` and `app/api/qr/[code]/route.ts`.
 
 ---
 
-## Henüz Yapılmayanlar / Potansiyel Geliştirmeler
+## Theme
 
-- [ ] Link düzenleme (URL veya kod güncelleme)
-- [ ] Sayfalama (çok sayıda link olunca tablo uzar)
-- [ ] Link bazlı tıklanma grafiği / analitik
-- [ ] Çoklu kullanıcı desteği (şu an tek admin)
-- [ ] Link son kullanma tarihi (expiry)
-- [x] `data/` klasörünü `.gitignore`'a ekle (DB dosyası commit'lenmemeli) — **Tamamlandı**
-- [ ] **Parola güvenliği:** `ADMIN_PASSWORD` şu an `.env.local`'da düz metin. Bcrypt veya Argon2 hash'e taşınmalı — `validateCredentials` `lib/auth.ts:42`'de, `.env.local`'da `ADMIN_PASSWORD_HASH` değişkeni kullanılmalı.
-- [ ] Rate limiting için Redis/harici store (şu an memory-tabanlı, restart'ta sıfırlanır)
+Always dark mode — independent of system preference.
+
+Color palette:
+- Background: `#0f1117`
+- Card/panel: `#1a1d27`
+- Border: `#2a2d3a`
+- Row hover: `#1f2233`
+- Accent: `blue-600` / `blue-500`
+- Text: `white` → `slate-300` → `slate-500` → `slate-600` (hierarchy)
+
+---
+
+## Important Technical Notes
+
+1. `better-sqlite3` only works in Node.js runtime. Cannot be used in middleware — that's why redirect logic lives in `/api/r/[code]` and middleware rewrites there.
+2. `nanoid` is active: `customAlphabet`, Base62, 7 chars.
+3. `bcryptjs` was removed — `validateCredentials` now does `password === process.env.ADMIN_PASSWORD`.
+4. DB WAL mode enabled, foreign keys active.
+5. QR PNG response uses `buffer as unknown as BodyInit` cast — `qrcode` returns a `Buffer`, Next.js `Response` expects `BodyInit`.
+6. Rate limiting is memory-based — resets on process restart. Needs Redis or external store for multi-instance deployments.
+7. `getSetting` / `setSetting` in `lib/db.ts` use upsert (`INSERT ... ON CONFLICT DO UPDATE`) on the `settings` table.
+
+---
+
+## TODO / Potential Improvements
+
+- [ ] Link editing (update URL or code)
+- [ ] Pagination (table grows with many links)
+- [ ] Per-link click analytics / charts
+- [ ] Multi-user support (currently single admin)
+- [ ] Link expiry date
+- [x] Add `data/` to `.gitignore` — **Done**
+- [ ] **Password security:** `ADMIN_PASSWORD` is plain text. Should migrate to bcrypt or Argon2 — change `validateCredentials` in `lib/auth.ts` and use `ADMIN_PASSWORD_HASH` in `.env.local`
+- [ ] Rate limiting with Redis/external store (currently memory-based, resets on restart)
